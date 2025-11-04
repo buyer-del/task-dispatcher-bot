@@ -6,7 +6,9 @@ google-auth-httplib2
 google-cloud-speech
 pydub
 easyocr
-pyaudioop
+git+https://github.com/jiaaro/pyaudioop.git
+
+
 
 
 
