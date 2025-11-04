@@ -4,3 +4,6 @@ google-auth
 google-auth-oauthlib
 google-auth-httplib2
 python-telegram-bot[webhooks]==20.8
+faster-whisper
+easyocr
+
