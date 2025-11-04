@@ -1,30 +1,53 @@
-# ai.py
 # ============================================
-#  🔊 Аудіо → Faster-Whisper (українська)
+#  🔊 Аудіо → Google Speech-to-Text (українська)
 #  🖼️ Зображення → EasyOCR (українська)
 # ============================================
 
-from faster_whisper import WhisperModel
+from google.cloud import speech
+from pydub import AudioSegment
 import easyocr
 from PIL import Image
 import numpy as np
+import io
+import os
 
-# --- Faster-Whisper (локальне розпізнавання аудіо) ---
-_model = WhisperModel("small", device="cpu", compute_type="int8")
-
+# --- Google Speech-to-Text ---
 def transcribe_audio(file_path: str) -> str:
     """
-    Розпізнає українську мову з аудіо локально (без інтернету).
+    Розпізнає українську мову з аудіо через Google Speech-to-Text.
+    Підтримує різні формати (.ogg, .mp3, .m4a, .wav тощо).
     """
     try:
-        segments, _ = _model.transcribe(
-            file_path,
-            language="uk",
-            vad_filter=True,
-            beam_size=5
+        # 1. Конвертуємо будь-яке аудіо у WAV 16kHz mono
+        wav_path = file_path + ".wav"
+        sound = AudioSegment.from_file(file_path)
+        sound = sound.set_frame_rate(16000).set_channels(1)
+        sound.export(wav_path, format="wav")
+
+        # 2. Завантажуємо аудіо у пам'ять
+        with io.open(wav_path, "rb") as audio_file:
+            content = audio_file.read()
+
+        # 3. Налаштування клієнта Speech API
+        client = speech.SpeechClient()
+        audio = speech.RecognitionAudio(content=content)
+        config = speech.RecognitionConfig(
+            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+            sample_rate_hertz=16000,
+            language_code="uk-UA",
+            enable_automatic_punctuation=True,
         )
-        text = " ".join(seg.text for seg in segments).strip()
-        return text or "(порожній результат)"
+
+        # 4. Відправляємо запит до Google Speech-to-Text
+        response = client.recognize(config=config, audio=audio)
+
+        # 5. Отримуємо результат
+        if not response.results:
+            return "(мову не розпізнано)"
+
+        text = " ".join([result.alternatives[0].transcript for result in response.results])
+        return text.strip()
+
     except Exception as e:
         return f"Помилка транскрипції: {e}"
 
